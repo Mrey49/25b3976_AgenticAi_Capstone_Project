@@ -86,11 +86,10 @@ The planner then performs several constraint checks before finalizing the schedu
 Timetable slot clashes
 Credit limits
 Duplicate courses
+
 **How to use**
 I have created .env file just add your api key there and then run app.py
 Enter your cpi,other things which it asks and your interests and then enjoy this planner instead of manually wasting so much time on Internal ASC
 Ps: It contains of every department even of Policy Studies,Climate Change etc.
-
-Half-semester and full-semester compatibility
 
 Only courses satisfying all these constraints are included in the final semester plan.
