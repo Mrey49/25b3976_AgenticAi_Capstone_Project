@@ -47,26 +47,34 @@ Instead of using simple keyword matching, the planner uses Google Gemini to perf
 
 For example:
 AI → Machine Learning, Deep Learning, Computer Vision
+
 Mathematics → Statistics, Optimization
+
 Finance → Financial Engineering
+
 Security → Cryptography
 
 Each recommended course is assigned:
+
 A relevance score
+
 A ranking
+
 A short explanation describing why the course matches the student's interests
 
 The planner also validates every recommendation against the local course database to ensure that no hallucinated course recommendations are accepted.
 
+
 Planner Agent
 The Planner Agent constructs the final semester schedule.
-It combines:
-Compulsory Semester 3 courses
-AI-recommended electives
+It combines:Compulsory Semester 3 courses and the AI-recommended courses
 
 The planner then performs several constraint checks before finalizing the schedule:
+
 Timetable slot clashes
+
 Credit limits
+
 Duplicate courses
 
 **How to use**
