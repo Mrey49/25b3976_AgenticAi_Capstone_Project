@@ -13,25 +13,7 @@ I also made (timetable.py) that is actual IITB timetable of 2025-26 year, allowi
 **How the Planner Works**
 The overall workflow is shown below:
 
-Student Input
-     │
-     ▼
-Rulebook Validator Agent
-     │
-     ▼
-Eligibility Agent
-     │
-     ▼
-Candidate Generator Agent
-     │
-     ▼
-Ranking Agent
-     │
-     ▼
-Planner Agent
-     │
-     ▼
-Final Semester Plan
+Student Input-->Rulebook Validator Agent-->Eligibility Agent-->Candidate Generator Agent-->Ranking Agent-->Planner Agent-->Final Semester Plan
 
 Rulebook Validator Agent
 The first agent validates the student's registration according to the IIT Bombay Undergraduate Rulebook.
@@ -88,8 +70,8 @@ Credit limits
 Duplicate courses
 
 **How to use**
+
 I have created .env file just add your api key there and then run app.py
 Enter your cpi,other things which it asks and your interests and then enjoy this planner instead of manually wasting so much time on Internal ASC
-Ps: It contains of every department even of Policy Studies,Climate Change etc.
 
-Only courses satisfying all these constraints are included in the final semester plan.
+Ps: It contains courses of every department even of Policy Studies,Climate Change etc.
