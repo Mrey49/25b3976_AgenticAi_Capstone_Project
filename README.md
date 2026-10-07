@@ -1,75 +1,68 @@
-As we enter our second year we are now allowed to take courses apart from our core courses but that is a big headache as if we finalise the courses which we want to take based on our interests after spending a lot of time on ASC portal then we face challenges like slot clash, credits issue, we wanted to take this course as minor but it is available as elective and the prequistes required. So to solve this problem i build an AgenticAi Planner. I am myself a upcoming sophomore in elec so i created a comprehensive course database (database.py) containing all compulsory Semester 3 courses along with every hasmed elective, institute elective, department elective and minor course available to me. For each course, I included information such as:
+Agentic AI Course-Planner
+Overview
 
-Course code and title
-Credits
-Department
-Course category
-Time slot
-Full-semester or half-semester offering
-Interest tags for semantic matching
+A multi-agent system that automates semester course selection for IIT Bombay undergraduates. From a student's CPI, academic standing and interests, it produces a registration plan that is clash-free, credit-compliant and personalised. It was built with LangChain, LangGraph, RAG and Google Gemini.
 
-I also made (timetable.py) that is actual IITB timetable of 2025-26 year, allowing the planner to accurately detect slot clashes and generate conflict-free schedules.I then made rag.py which uses rag model to retrieve all the infoabout category of the student,credits allowed from the ugrulebook.Instead of hardcoding the ugrulebook rules i used rag as it will help just to put the new updated rulebook instead of changing the whole code.
+The Problem
 
-**How the Planner Works**
-The overall workflow is shown below:
+From their second year, IITB students can take courses beyond the core curriculum: HASMED electives, institute electives, department electives and minors. Finalising a choice on the ASC portal usually means:
 
-Student Input-->Rulebook Validator Agent-->Eligibility Agent-->Candidate Generator Agent-->Ranking Agent-->Planner Agent-->Final Semester Plan
+Spending hours browsing courses across all departments
+Discovering slot clashes only after shortlisting
+Hitting credit limits that depend on academic category
+Finding that a course counts as an elective rather than a minor, or that prerequisites are missing
+System Architecture
 
-Rulebook Validator Agent
-The first agent validates the student's registration according to the IIT Bombay Undergraduate Rulebook.
-Using the RAG implemented in rag.py, the agent retrieves only the relevant sections of the rulebook related to semester registration. Based on the student's academic information, including CPI and academic standing, Gemini determines:
-Academic Category (Category I–VI)
-Maximum permissible registration credits
-Minimum semester credits
-Important registration remarks
-This ensures that all subsequent planning decisions comply with the official institute regulations.
+The planner is a sequential LangGraph pipeline in which five agents share a common StudentState object:
 
-Eligibility Agent
-Once the registration rules have been determined, the Eligibility Agent verifies whether the student's requested semester is valid.
-The agent checks:
-Maximum allowable registration credits
-Minimum credit requirements
-Requested semester credits
-Overall registration eligibility
-If the student's requested credits violate the UG Rulebook, the planner immediately informs the student instead of producing an invalid timetable.
+Student Input → Rulebook Validator → Eligibility → Candidate Generator → Ranking → Planner → Final Plan
+Data layer
+database.py holds every Semester 3 compulsory course plus all HASMED, institute, department and minor electives. Each entry stores code, title, credits, department, category, time slot, full or half-semester offering, and interest tags for semantic matching. It covers every department, including Policy Studies and Climate Studies.
+timetable.py encodes the actual IITB 2025-26 slot timetable, so clash detection (can_add_course) and credit calculation use real data.
+rag.py indexes the UG Rulebook and retrieves only the sections relevant to registration. Because rules are retrieved rather than hardcoded, a new rulebook can replace the old one without touching any code.
+Agents
 
-Candidate Generator Agent
-The Candidate Generator Agent prepares the pool of elective courses that can potentially be recommended.
-The agent automatically removes:
-Compulsory courses already included in the semester
-Courses that are not available for Semester 3
-Courses that are not eligible for the student
-The remaining courses become the candidate list for recommendation.
+1. Rulebook Validator Agent (RAG + Gemini)
+Takes the student's CPI and academic history (outstanding FR/DX/DR/W grades in core courses, FR/DX credits, credits earned in the previous two semesters, non-core FR/DX count). It retrieves the relevant rulebook sections and has Gemini determine the academic category (I-VI), maximum and minimum credits, and important registration remarks. The prompt restricts Gemini to the retrieved text and states that Category VI supersedes all others. If the output can't be parsed, safe defaults are used and the problem is flagged.
 
-Ranking Agent
-The Academic Advisor Agent is responsible for recommending electives based on the student's interests.
-Instead of using simple keyword matching, the planner uses Google Gemini to perform semantic understanding of the student's interests.
+2. Eligibility Agent
+Validates the requested credit load against the rulebook output. If the request exceeds the category maximum, it is automatically capped and the student is told why. Loads below the minimum are flagged as needing Faculty Advisor approval. Loads below the compulsory credit total are marked ineligible.
 
-For example:
-AI → Machine Learning, Deep Learning, Computer Vision
-Mathematics → Statistics, Optimization
-Finance → Financial Engineering
-Security → Cryptography
+3. Candidate Generator Agent
+Builds the pool of recommendable electives from the course database. It excludes courses that are already compulsory for the semester and sorts the rest by credits and course code.
 
-Each recommended course is assigned:
-A relevance score
-A ranking
-A short explanation describing why the course matches the student's interests
+4. Ranking Agent (Gemini)
+Instead of keyword matching, Gemini reads each candidate's title and tags and judges semantic relevance (for example, AI maps to Machine Learning, Computer Vision and NLP, and Finance maps to Financial Engineering and Economics). It returns up to 15 courses, each with a 0-100 relevance score and a one-line justification.
 
-The planner also validates every recommendation against the local course database to ensure that no hallucinated course recommendations are accepted.
+Safeguards include:
 
-Planner Agent
-The Planner Agent constructs the final semester schedule.
-It combines:Compulsory Semester 3 courses and the AI-recommended courses
+A prompt that requires a strong, direct academic link and gives explicit negative examples to prevent speculative matches
+Hallucination filtering: every returned course code is checked against the local database, and unknown codes are discarded
+Three retries with JSON cleanup if the LLM call or parse fails
+Graceful degradation: if Gemini fails, finds nothing relevant or returns only invalid codes, the system tells the student and continues with the compulsory courses only
+A fallback "broadly useful electives" mode when the student gives no interests
 
-The planner then performs several constraint checks before finalizing the schedule:
-Timetable slot clashes
-Credit limits
-Duplicate courses
+5. Planner Agent
+Starts from the compulsory courses and adds ranked electives one at a time. Before accepting each course it checks:
 
-**How to use**
+Credit limit: the addition must not exceed the planning target
+Slot clash: it must not clash with already-selected courses
+Duplicates: it must not already be in the plan
 
-I have created .env file just add your api key there and then run app.py
-Enter your cpi,other things which it asks and your interests and then enjoy this planner instead of manually wasting so much time on Internal ASC
+Rejected courses are recorded with reasons, and when a course is rejected for a clash, the planner suggests the next-best non-clashing alternative. Every decision is written to a decision log, so the final output explains why each course was selected or rejected. The final summary includes registered and remaining credits, clashes, alternatives and remarks.
 
-Ps: It contains courses of every department even of Policy Studies,Climate Change etc.
+Special case: Category VI. The UG rules don't say which compulsory courses should be deferred for students in the Academic Rehabilitation Programme, so the planner deliberately does not auto-plan. It states the credit cap and directs the student to their Faculty Advisor and the Department UG Committee.
+
+Key Design Decisions
+RAG over hardcoding: rules live in the rulebook document, so updates need no code changes.
+LLM for judgment, code for constraints: Gemini handles semantic ranking and rule interpretation, while slot clashes, credit arithmetic and duplicate checks are deterministic Python. The LLM can't produce an invalid timetable.
+Validate everything the LLM returns: course codes are verified against the database before use.
+Transparency: scores, reasons, rejection causes and the decision log make the output auditable.
+Fail safe: every failure mode falls back to a valid compulsory-only plan with an explanation.
+Tech Stack
+
+Python · LangChain · LangGraph · Google Gemini · RAG (vector retrieval over the UG Rulebook) · .env-based API key configuration · CLI via app.py
+
+Usage
+
+Add your Gemini API key to .env, run app.py, enter your CPI, academic standing details, target credits and interests, and receive a complete semester plan.
